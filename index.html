@@ -1,1 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Opide</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(270deg, rgba(0,0,0,0.8), rgba(50,50,50,0.6));
+      background-size: 400% 400%;
+      animation: animateBackground 30s ease infinite;
+      backdrop-filter: blur(8px);
+      z-index: -2;
+    }
+
+    @keyframes animateBackground {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .scrolling-text {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      font-size: 4rem;
+      color: rgba(255,255,255,0.05);
+      filter: blur(3px);
+      z-index: -1;
+    }
+
+    .scrolling-text span {
+      display: inline-block;
+      padding-left: 100%;
+      animation: scrollText 60s linear infinite;
+    }
+
+    @keyframes scrollText {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+</head>
+<body class="relative text-white h-screen flex flex-col overflow-hidden bg-black">
+  <div class="scrolling-text">
+    <span>Hola · Bonjour · こんにちは · Hello · Здравствуйте · مرحبا · Hallo · नमस्ते · 你好 · 안녕하세요 · Ciao · سلام · שלום · สวัสดี · Ola · Γειά σου · Merhaba · </span>
+  </div>
+
+  <div class="flex justify-between items-center bg-white/10 p-4 shadow-md backdrop-blur">
+    <button id="newChat" class="bg-blue-500 text-white rounded-full px-4 py-2 text-sm hover:bg-blue-600 transition">New Chat</button>
+    <select id="chatHistoryDropdown" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition">
+      <option value="">History</option>
+    </select>
+    <button id="toggleSettings" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition">Settings</button>
+  </div>
+
+  <div id="settingsSection" class="hidden bg-white/10 p-4 backdrop-blur">
+    <input id="apiKey" type="text" placeholder="API Key" class="w-full p-2 mb-2 bg-white/10 rounded text-white">
+    <button id="saveKey" class="bg-yellow-500 w-full p-2 rounded mb-2 hover:bg-yellow-600 transition">Save API Key</button>
+    <select id="personalitySelect" class="w-full p-2 mb-2 bg-white/10 text-white rounded">
+      <option value="You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.">Grok</option>
+      <option value="You are Luna, a friendly and poetic assistant who speaks in rhyme.">Luna</option>
+      <option value="You are Axon, a precise technical assistant specialized in programming help.">Axon</option>
+    </select>
+    <button id="clearChats" class="bg-red-500 w-full p-2 rounded hover:bg-red-600 transition">Delete All Chats</button>
+  </div>
+
+  <div id="chatHistory" class="flex-1 overflow-y-auto p-4 relative z-10"></div>
+
+  <div class="flex items-center p-4 bg-white/10 backdrop-blur">
+    <input id="userInput" type="text" placeholder="Type a message..." class="flex-grow p-2 rounded-full bg-white/10 text-white focus:outline-none">
+    <button id="sendMessage" class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition">Send</button>
+  </div>
+
+  <script>
+    window.onload = function () {
+      const chatHistoryDropdown = document.getElementById("chatHistoryDropdown");
+      const toggleSettings = document.getElementById("toggleSettings");
+      const settingsSection = document.getElementById("settingsSection");
+      const personalitySelect = document.getElementById("personalitySelect");
+      let chatSessions = JSON.parse(localStorage.getItem("chatSessions")) || [];
+      let currentConversation = JSON.parse(localStorage.getItem("currentConversation")) || [];
+      let systemPrompt = localStorage.getItem("systemPrompt") || personalitySelect.value;
+
+      function updateChatDropdown() {
+        chatHistoryDropdown.innerHTML = '<option value="">History</option>';
+        chatSessions.forEach((session, index) => {
+          let label = session.label || `Chat ${index + 1}`;
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = label;
+          chatHistoryDropdown.appendChild(option);
+        });
+      }
+
+      chatHistoryDropdown.addEventListener("change", () => {
+        const selectedIndex = chatHistoryDropdown.value;
+        if (selectedIndex !== "") {
+          document.getElementById("chatHistory").innerHTML = chatSessions[selectedIndex].html;
+        }
+      });
+
+      document.getElementById("saveKey").addEventListener("click", () => {
+        localStorage.setItem("grokApiKey", document.getElementById("apiKey").value);
+        alert("API Key saved!");
+      });
+
+      toggleSettings.addEventListener("click", () => {
+        settingsSection.classList.toggle("hidden");
+      });
+
+      personalitySelect.addEventListener("change", () => {
+        systemPrompt = personalitySelect.value;
+        localStorage.setItem("systemPrompt", systemPrompt);
+      });
+
+      document.getElementById("clearChats").addEventListener("click", () => {
+        if (confirm("Are you sure you want to delete all chats?")) {
+          chatSessions = [];
+          localStorage.removeItem("chatSessions");
+          updateChatDropdown();
+          document.getElementById("chatHistory").innerHTML = "";
+        }
+      });
+
+      function scrollToBottom() {
+        const chatBox = document.getElementById("chatHistory");
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      async function sendMessage() {
+        const apiKey = localStorage.getItem("grokApiKey");
+        const userMessage = document.getElementById("userInput").value;
+        if (!apiKey || !userMessage.trim()) return alert("Missing API Key or Message");
+
+        const chatBox = document.getElementById("chatHistory");
+        chatBox.innerHTML += `<div class='mb-2'><b style='color:white;'>You:</b> ${marked.parse(userMessage)}</div>`;
+        document.getElementById("userInput").value = "";
+
+        currentConversation.push({ role: "user", content: userMessage });
+        localStorage.setItem("currentConversation", JSON.stringify(currentConversation));
+        scrollToBottom();
+
+        try {
+          const response = await fetch("https://api.x.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: "grok-2-latest",
+              max_tokens: 1000,
+              messages: [{ role: "system", content: systemPrompt }, ...currentConversation]
+            })
+          });
+
+          if (!response.ok) throw new Error("Failed to reach Grok API");
+
+          const data = await response.json();
+          if (!data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("Invalid API response format");
+
+          const grokResponse = data.choices[0].message.content;
+          chatBox.innerHTML += `<div class='mb-2'><b style='color:skyblue;'>Bot:</b> ${marked.parse(grokResponse)}</div>`;
+
+          currentConversation.push({ role: "assistant", content: grokResponse });
+          localStorage.setItem("currentConversation", JSON.stringify(currentConversation));
+          scrollToBottom();
+        } catch (error) {
+          alert("Error communicating with Grok API: " + error.message);
+          console.error("Grok API Error:", error);
+        }
+      }
+
+      document.getElementById("sendMessage").addEventListener("click", sendMessage);
+      document.getElementById("userInput").addEventListener("keypress", (event) => {
+        if (event.key === "Enter") sendMessage();
+      });
+
+      document.getElementById("newChat").addEventListener("click", () => {
+        const chatBox = document.getElementById("chatHistory");
+        const firstUserMessage = currentConversation.find(msg => msg.role === "user")?.content || "";
+        if (chatBox.innerHTML.trim()) {
+          chatSessions.push({
+            html: chatBox.innerHTML,
+            label: `${personalitySelect.options[personalitySelect.selectedIndex].text}: ${firstUserMessage.slice(0, 20)}...`
+          });
+          localStorage.setItem("chatSessions", JSON.stringify(chatSessions));
+          updateChatDropdown();
+        }
+        chatBox.innerHTML = "";
+        currentConversation = [];
+        localStorage.setItem("currentConversation", JSON.stringify(currentConversation));
+      });
+
+      updateChatDropdown();
+    }
+  </script>
+</body>
+</html>
 
