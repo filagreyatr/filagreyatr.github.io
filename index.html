@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Opide</title>
+  <title>Opihora AI</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -57,34 +57,44 @@
     <span>Hola · Bonjour · こんにちは · Hello · Здравствуйте · مرحبا · Hallo · नमस्ते · 你好 · 안녕하세요 · Ciao · سلام · שלום · สวัสดี · Ola · Γειά σου · Merhaba · </span>
   </div>
 
-  <div class="flex justify-between items-center bg-white/10 p-4 shadow-md backdrop-blur">
-    <button id="newChat" class="bg-blue-500 text-white rounded-full px-4 py-2 text-sm hover:bg-blue-600 transition">New Chat</button>
-    <select id="chatHistoryDropdown" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition">
+  <div class="flex flex-col sm:flex-row justify-between items-center bg-white/10 p-4 shadow-md backdrop-blur space-y-2 sm:space-y-0 sm:space-x-4">
+    <button id="newChat" class="bg-blue-500 text-white rounded-full px-4 py-2 text-sm hover:bg-blue-600 transition w-full sm:w-auto">New Chat</button>
+    <select id="chatHistoryDropdown" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition w-full sm:w-auto">
       <option value="">History</option>
     </select>
-    <button id="toggleSettings" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition">Settings</button>
+    <button id="toggleSettings" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition w-full sm:w-auto">Settings</button>
   </div>
 
-  <div id="settingsSection" class="hidden bg-white/10 p-4 backdrop-blur">
-    <input id="apiKey" type="text" placeholder="API Key" class="w-full p-2 mb-2 bg-white/10 rounded text-white">
-    <button id="saveKey" class="bg-yellow-500 w-full p-2 rounded mb-2 hover:bg-yellow-600 transition">Save API Key</button>
-    <select id="personalitySelect" class="w-full p-2 mb-2 bg-white/10 text-white rounded">
-      <option value="You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.">Grok</option>
-      <option value="You are Luna, a friendly and poetic assistant who speaks in rhyme.">Luna</option>
-      <option value="You are Axon, a precise technical assistant specialized in programming help.">Axon</option>
+  <div id="settingsSection" class="hidden bg-white/10 p-4 backdrop-blur space-y-2">
+    <input id="apiKey" type="text" placeholder="API Key" class="w-full p-2 bg-white/10 rounded text-white">
+    <button id="saveKey" class="bg-yellow-500 w-full p-2 rounded hover:bg-yellow-600 transition">Save API Key</button>
+    <select id="personalitySelect" class="w-full p-2 bg-white/10 text-white rounded">
+      <option value="You are Opihora, a chatbot designed to help the user. Be friendly, and provide accurate and truthful information.">Normal Mode</option>
+      <option value="You are Opihora, a chatbot designed to act like a jobless stan Twitter account. Talk to the user about pop culture. Always type in lowercase.">Stan Mode</option>
+      <option value="You are Opihora. You are in testing mode. Always respond in all capital letters and only say 'API FUNCTIONAL.' Do not say anything other than this.">Test Mode</option>
     </select>
     <button id="clearChats" class="bg-red-500 w-full p-2 rounded hover:bg-red-600 transition">Delete All Chats</button>
   </div>
 
   <div id="chatHistory" class="flex-1 overflow-y-auto p-4 relative z-10"></div>
 
-  <div class="flex items-center p-4 bg-white/10 backdrop-blur">
-    <input id="userInput" type="text" placeholder="Type a message..." class="flex-grow p-2 rounded-full bg-white/10 text-white focus:outline-none">
-    <button id="sendMessage" class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition">Send</button>
+  <div class="flex flex-col sm:flex-row items-center p-4 bg-white/10 backdrop-blur space-y-2 sm:space-y-0 sm:space-x-2">
+    <input id="userInput" type="text" placeholder="Type a message..." class="flex-grow p-2 rounded-full bg-white/10 text-white focus:outline-none w-full">
+    <button id="sendMessage" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition w-full sm:w-auto">Send</button>
   </div>
 
   <script>
     window.onload = function () {
+      if (!localStorage.getItem("grokApiKey")) {
+        const apiKey = prompt("Please enter your API Key to continue:");
+        if (!apiKey) {
+          alert("API Key is required to use this app.");
+          return;
+        }
+        localStorage.setItem("grokApiKey", apiKey);
+        alert("API Key saved! You can update it anytime in Settings.");
+      }
+
       const chatHistoryDropdown = document.getElementById("chatHistoryDropdown");
       const toggleSettings = document.getElementById("toggleSettings");
       const settingsSection = document.getElementById("settingsSection");
@@ -120,9 +130,33 @@
         settingsSection.classList.toggle("hidden");
       });
 
-      personalitySelect.addEventListener("change", () => {
-        systemPrompt = personalitySelect.value;
-        localStorage.setItem("systemPrompt", systemPrompt);
+      personalitySelect.addEventListener("change", (e) => {
+        const newPrompt = e.target.value;
+        const newLabel = e.target.options[e.target.selectedIndex].text;
+        const confirmSwitch = confirm(`Switch to ${newLabel}? This will start a new chat and clear the current one.`);
+
+        if (confirmSwitch) {
+          const chatBox = document.getElementById("chatHistory");
+          const firstUserMessage = currentConversation.find(msg => msg.role === "user")?.content || "";
+
+          if (chatBox.innerHTML.trim()) {
+            chatSessions.push({
+              html: chatBox.innerHTML,
+              label: `${newLabel}: ${firstUserMessage.slice(0, 20)}...`
+            });
+            localStorage.setItem("chatSessions", JSON.stringify(chatSessions));
+            updateChatDropdown();
+          }
+
+          chatBox.innerHTML = "";
+          currentConversation = [];
+          localStorage.setItem("currentConversation", JSON.stringify(currentConversation));
+
+          systemPrompt = newPrompt;
+          localStorage.setItem("systemPrompt", systemPrompt);
+        } else {
+          e.target.value = systemPrompt;
+        }
       });
 
       document.getElementById("clearChats").addEventListener("click", () => {
@@ -209,4 +243,3 @@
   </script>
 </body>
 </html>
-
