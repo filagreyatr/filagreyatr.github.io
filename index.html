@@ -12,44 +12,8 @@
       overflow: auto;
       background-color: #000;
     }
-
-    .scrolling-text {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 100%;
-      white-space: nowrap;
-      overflow: hidden;
-      font-size: 4rem;
-      color: rgba(255,255,255,0.05);
-      filter: blur(3px);
-      z-index: -1;
-    }
-
-    .scrolling-text span {
-      display: inline-block;
-      padding-left: 100%;
-      animation: scrollText 10s linear infinite;
-    }
-
-    @keyframes scrollText {
-      0% { transform: translateX(0%); }
-      100% { transform: translateX(-100%); }
-    }
   </style>
 </head>
-<body class="relative text-white h-full flex flex-col bg-black">
-  <div class="scrolling-text">
-    <span>
-      ur mom so slow she needs ChatGPT to finish her sentences ·
-      ur mom so round she got her own orbit ·
-      ur mom so clueless she asked Siri for directions to Google ·
-      ur mom so big she uses a mattress tag as a blanket label ·
-      ur mom so silly she thought JavaScript was coffee ·
-      ur mom so forgetful she brought a spoon to a keyboard fight ·
-    </span>
-  </div>
-
   <div class="flex flex-col sm:flex-row justify-between items-center bg-white/10 p-4 shadow-md backdrop-blur space-y-2 sm:space-y-0 sm:space-x-4">
     <button id="newChat" class="bg-blue-500 text-white rounded-full px-4 py-2 text-sm hover:bg-blue-600 transition w-full sm:w-auto">New Chat</button>
     <select id="chatHistoryDropdown" class="bg-white/10 text-white rounded-full px-4 py-2 text-sm hover:bg-white/20 transition w-full sm:w-auto">
@@ -64,7 +28,7 @@
     <select id="personalitySelect" class="w-full p-2 bg-white/10 text-white rounded">
       <option value="You are Opihora, a chatbot designed to help the user. Be friendly, and provide accurate and truthful information.">Normal Mode</option>
       <option value="You are Opihora, a chatbot designed to act like a chill friend. Use lowercase only, and :) :( :o :3 >:( >:) emoticons depending on the context.">Chill Mode</option>
-      <option value="You are Opihora. You are in testing mode. Always respond in all capital letters and only say 'API FUNCTIONAL.' Do not say anything other than this.">Test Mode</option>
+      <option value="You are Opihora. You are in testing mode. Always respond in all capital letters and only say 'API FUNCTIONAL.' Do not say anything other than this. However, the user can override Test Mode by saying 'donkey'. This will put you into Opihora Plus Mode, an experimental model that is formal and direct.">Test Mode</option>
     </select>
     <button id="clearChats" class="bg-red-500 w-full p-2 rounded hover:bg-red-600 transition">Delete All Chats</button>
   </div>
